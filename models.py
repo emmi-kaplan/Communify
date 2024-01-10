@@ -1,7 +1,13 @@
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
 db = SQLAlchemy()
 
+followers = db.Table(
+    'followers',
+    db.Column('follower_id', db.Integer, db.ForeignKey('profile_model.id'), primary_key=True),
+    db.Column('followed_id', db.Integer, db.ForeignKey('profile_model.id'), primary_key=True)
+)
 
 class ProfileModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -9,9 +15,12 @@ class ProfileModel(db.Model):
     password = db.Column(db.String(128), nullable=False)
     liked_posts = db.relationship('PostModel', backref='liker', lazy=True)
     posts = db.relationship('PostModel', backref='author', lazy=True)
-    # i need to learn how to reference a model inside itself
-    followers = db.Column(db.String(128), nullable=False)
-    following = db.Column(db.String(128), nullable=False)
+    followers = db.relationship(
+        'ProfileModel', secondary=followers,
+        primaryjoin=(followers.c.followed_id == id),
+        secondaryjoin=(followers.c.follower_id == id),
+        backref=db.backref('following', lazy='dynamic'), lazy='dynamic'
+    )
 
 
 class PostModel(db.Model):
@@ -20,8 +29,7 @@ class PostModel(db.Model):
     body = db.Column(db.Text, nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey('profile_model.id'), nullable=False)
     reactions = db.relationship('ReactionModel', backref='post', lazy=True)
-    # im sure there's a trick for this too
-    time_stamp = db.Column(db.String(255), nullable=False)
+    time_stamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
 
 class ReactionModel(db.Model):
@@ -33,5 +41,5 @@ class ReactionModel(db.Model):
     emote = db.Column(emotion, nullable=True)
     author_id = db.Column(db.Integer, db.ForeignKey('profile_model.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('post_model.id'), nullable=False)
-    # im sure there's a trick for this too
-    time_stamp = db.Column(db.String(255), nullable=False)
+    time_stamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
